@@ -1,0 +1,11 @@
+#include <stdio.h>
+
+void main()
+{
+    double x = 5.0;
+    double y = 9.8;
+    
+    double media = (x + y) / 2;
+    
+    printf("A média entre %lf e %lf é %lf", x, y, media);
+}
