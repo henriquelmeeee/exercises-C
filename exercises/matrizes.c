@@ -9,7 +9,7 @@ int main() {
     soma+=notas[n];
   }
   
-  for(int n = 1; n<=5; n++) {
+  for(int n=1; n<=5; n++) {
     printf("Nota %d: %d\n", n, notas[n]);
   }
 
