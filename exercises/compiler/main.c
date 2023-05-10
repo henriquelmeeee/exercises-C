@@ -24,6 +24,9 @@ char* map_literals(FILE* code, FILE* asm_code) {
         buffer[x] = line[n];
         n++; x++;
       }
+
+      // ADD CONST
+
       buffer[x+1] = '\0';
       fputs("l", asm_code);
       char str[8];
@@ -33,6 +36,14 @@ char* map_literals(FILE* code, FILE* asm_code) {
       fputs(buffer, asm_code);
       fputs("\"", asm_code);
       fputs(", 0\n", asm_code);
+
+      // ADD THEIR LENGTH
+      
+      fputs("l_len", asm_code);
+      fputs(str, asm_code);
+      fputs(" equ $-l", asm_code);
+      fputs(str, asm_code);
+      fputs("\n", asm_code);
 
       symbol_literal_number++;
     }
@@ -54,13 +65,13 @@ char* read_instructions(FILE* code, FILE* asm_code) {
   int literals_buf = 0;
 
   while( (read = getline(&line, &len, code)) != -1 ) {
+    memset(instruction, 0, sizeof(instruction));
     int n = 0;
     while(line[n] != ' ') {
       instruction[n] = line[n];
       n++;
     }
-    //instruction[n+1] = '\0';
-    if(strcmp(instruction, "print")) {
+    if(strcmp("print", instruction) == 0) {
       fputs("mov rax, 1\n", asm_code);
       fputs("mov rdi, 1\n", asm_code);
       fputs("mov rsi, l", asm_code);
@@ -72,13 +83,12 @@ char* read_instructions(FILE* code, FILE* asm_code) {
       fputs(buffer, asm_code);
       fputs("\nsyscall\n", asm_code);
       literals_buf++;
-    } else if (strcmp(instruction, "asm")) {
-      fputs(line+5, asm_code);
-      fputs("\n", asm_code);
+    } else if (strcmp("asm", instruction) == 0) {
+      fputs(line+4, asm_code);
     }
     free(line);
   }
-
+  fputs("mov rax, 60\nmov rdi, 1\nsyscall\n", asm_code);
   return "Reading Instructions finalized successfuly";
 }
 
@@ -100,10 +110,20 @@ int main(int argc, char *argv[]) {
   if(argc < 2) {
     printf("Informe o arquivo a ser compilado.");
     return 1;
+  } else if (argc < 3) {
+    printf("Informe o arquivo de saída (binário).");
+    return 1;
   } else {
     FILE* f = fopen(argv[1], "r+");
-    //char buffer[1024]; // conteúdo de até 1KB de código
-    //fgets(buffer, 1024, f); // coloca o conteúdo do código no buffer
     start_compile_proccess(f); // começa o processo de compilação
+    char* binary = argv[2];
+    system("/bin/nasm -f elf64 main.asm -o main.o");
+    char* command_init = "/bin/ld main.o -o ";
+    char command[100];
+
+    strcpy(command, command_init);
+    strcat(command, binary);
+
+    system(command);
   }
 }
