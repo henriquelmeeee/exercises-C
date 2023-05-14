@@ -4,6 +4,26 @@
 
 int symbol_literal_number = 0;
 
+struct variable {
+  char *name;
+  int size;
+};
+
+struct variable map_variables[512];
+int number_of_variables = 0;
+
+int check_variable_existence(char* name) {
+  if (number_of_variables != 0) {
+    for(int n = 0; n<=number_of_variables; n++) {
+      struct variable testing = map_variables[n];
+      if ( strcmp(name, testing.name) == 0 ) {
+        return 1;
+      }
+    }
+  }
+  return 0;
+}
+
 char* map_literals(FILE* code, FILE* asm_code) {
   fputs("section .rodata\n", asm_code);
   
@@ -19,6 +39,7 @@ char* map_literals(FILE* code, FILE* asm_code) {
       while(line[n] != '"') {n++;}
       n++;
       char buffer[512];
+      memset(buffer, 0, 512);
       int x = 0;
       while(line[n] != '"') { 
         buffer[x] = line[n];
@@ -47,16 +68,28 @@ char* map_literals(FILE* code, FILE* asm_code) {
 
       symbol_literal_number++;
     }
-  free(line);
   }
     
   
   return "Map Literals finalized successfuly";
 }
 
-char* read_instructions(FILE* code, FILE* asm_code) {
-  fputs("section .text\nglobal _start\n_start:\n", asm_code);
+void handle_error(char * to_free, uint code) {
+  switch (code) {
+    case 5:
+      printf("Você deve especificar o nome da variável em \"%s\"\nErro de código %d", to_free, code);
+      break;
+    default:
+      printf("Ocorreu um erro desconhecido.\nLinha: %s", to_free);
+  }
+  free(to_free);
+}
 
+#define add_asm fputs(line+4, asm_code)
+
+char* read_instructions(FILE* code, FILE* asm_code) {
+  fputs("section .text\nglobal _start\n_start:\n", asm_code); 
+  
   char *line = NULL;
   size_t len = 0;
   ssize_t read;
@@ -84,9 +117,31 @@ char* read_instructions(FILE* code, FILE* asm_code) {
       fputs("\nsyscall\n", asm_code);
       literals_buf++;
     } else if (strcmp("asm", instruction) == 0) {
-      fputs(line+4, asm_code);
+      add_asm;
+    } else if (strcmp("set", instruction) == 0) {
+      char *name;
+      int size = 0; // TODO get size of variable
+      if(check_variable_existence(name)) {
+
+      } else {
+        char *token = strtok(line, " ");
+        token = strtok(NULL, " "); // ignora "set"
+        if( (!token) || strcmp(token, "\n") == 0) {
+          handle_error(line, 5);
+        }
+        strcpy(name, token);
+        struct variable var_buffer = {name, size};
+
+        char str[8]; // <-- ALLOCATION IN STACK
+        sprintf(str, "%d", size);
+        fputs("sub rsp, ", asm_code);
+        fputs(str, asm_code);      
+
+        fputs("\n", asm_code);
+        map_variables[number_of_variables+1] = var_buffer;
+        ++number_of_variables;
+      }
     }
-    free(line);
   }
   fputs("mov rax, 60\nmov rdi, 1\nsyscall\n", asm_code);
   return "Reading Instructions finalized successfuly";
